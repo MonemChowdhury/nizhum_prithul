@@ -203,7 +203,7 @@ p{margin:0} .muted{color:var(--muted)}
         <div class="base"></div><div class="rib"></div><div class="lid"></div><div class="bow">🎀</div>
       </button>
       <p class="muted" style="text-align:center">From <span class="n-from"></span></p>
-      <p class="muted" style="text-align:center;font-size:13px">On iPhone, switch off silent mode to hear the music.</p>
+      <p class="muted" style="text-align:center;font-size:13px">Tap anywhere to start the music. On iPhone, switch off silent mode for sound effects.</p>
     </div>
   </section>
 
@@ -352,47 +352,13 @@ function beep(f=660,d=.09,type="triangle",v=.08){ if(!soundOn) return; try{
   g.gain.setValueAtTime(v,AC.currentTime); g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);
   o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime+d);}catch(e){} }
 const win=()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.15),i*110)); confetti();};
-// ---- background music: slow piano with a violin line (original, generated live) ----
-const music={on:false,timer:0,next:0,step:0,out:null};
-const BEAT=60/62, E8=BEAT/2;
-// 8-bar progression in A minor: Am F C G | Am F Dm E   [bass, then 4 right-hand notes]
-const PROG=[[110,[220,329.63,440,523.25]],[87.31,[174.61,261.63,349.23,440]],[130.81,[130.81*2,392,523.25,659.25].map((f,i)=>i?f:261.63)],[98,[196,293.66,392,493.88]],
-            [110,[220,329.63,440,523.25]],[87.31,[174.61,261.63,349.23,440]],[73.42,[146.83,220,293.66,349.23]],[82.41,[164.81,246.94,329.63,415.30]]];
-const ARP=[0,1,2,3,2,1,2,1];
-// violin line: [frequency, length in eighths], 64 eighths = 8 bars
-const VIOL=[[659.25,6],[587.33,2],[523.25,4],[440,4],[392,6],[659.25,2],[587.33,8],
-            [659.25,4],[880,4],[783.99,4],[698.46,2],[659.25,2],[698.46,4],[587.33,4],[493.88,6],[415.30,2]];
-const VSTART={}; { let k=0; VIOL.forEach(v=>{ VSTART[k]=v; k+=v[1]; }); }
-function piano(f,t,v,d){ const g=AC.createGain(), lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=Math.min(5000,f*6);
-  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+.006); g.gain.exponentialRampToValueAtTime(v*.35,t+.35); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-  g.connect(lp).connect(music.out);
-  [[1,1],[2,.42],[3,.18],[4,.08],[5,.04]].forEach(([h,a])=>{ const o=AC.createOscillator(), og=AC.createGain(); o.frequency.value=f*h*(1+(h-1)*.0007); og.gain.value=a;
-    o.connect(og).connect(g); o.start(t); o.stop(t+d+.05); }); }
-function violin(f,t,d){ const g=AC.createGain(), lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2600; lp.Q.value=.7;
-  const lfo=AC.createOscillator(), lg=AC.createGain(); lfo.frequency.value=5.2; lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(f*.006,t+Math.min(.8,d*.5));
-  lfo.connect(lg); const att=Math.min(.45,d*.35), rel=.6;
-  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.16,t+att); g.gain.setValueAtTime(.16,t+d-.05); g.gain.linearRampToValueAtTime(.12,t+d); g.gain.exponentialRampToValueAtTime(.0001,t+d+rel);
-  [-4,4,0].forEach((c,i)=>{ const o=AC.createOscillator(); o.type=i<2?'sawtooth':'triangle'; o.frequency.value=f; o.detune.value=c; lg.connect(o.frequency);
-    const og=AC.createGain(); og.gain.value=i<2?.5:.6; o.connect(og).connect(g); o.start(t); o.stop(t+d+rel+.1); });
-  lfo.start(t); lfo.stop(t+d+rel+.1); g.connect(lp).connect(music.out); }
-function reverb(){ const len=AC.sampleRate*3, b=AC.createBuffer(2,len,AC.sampleRate);
-  for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2); }
-  const c=AC.createConvolver(); c.buffer=b; return c; }
-function sched(){ while(music.next<AC.currentTime+.6){ const s=music.step, t=music.next, bar=Math.floor(s/8)%16, [bass,rh]=PROG[bar%8];
-    if(s%8===0){ piano(bass,t,.34,E8*9); piano(bass*2,t,.14,E8*8); }
-    piano(rh[ARP[s%8]],t,s%8===0?.2:.13+Math.random()*.03,E8*5);
-    if(bar>=8){ const v=VSTART[s%64]; if(v) violin(v[0],t,v[1]*E8); }   // violin joins on the second pass
-    music.step++; music.next+=E8; } }
-function startMusic(){ if(!soundOn) return; try{
-  AC=AC||new (window.AudioContext||window.webkitAudioContext)(); AC.resume&&AC.resume();
-  if(!music.out){ music.out=AC.createGain(); music.out.gain.value=0; const dry=AC.createGain(), wet=AC.createGain(), rv=reverb();
-    dry.gain.value=.75; wet.gain.value=.5; music.out.connect(dry).connect(AC.destination); music.out.connect(rv).connect(wet).connect(AC.destination); }
-  music.out.gain.cancelScheduledValues(AC.currentTime); music.out.gain.linearRampToValueAtTime(.55,AC.currentTime+2);
-  if(music.on) return; music.on=true; music.next=AC.currentTime+.15; music.timer=setInterval(sched,120); sched(); }catch(e){} }
-function stopMusic(){ if(!music.on) return; music.on=false; clearInterval(music.timer);
-  try{ music.out.gain.cancelScheduledValues(AC.currentTime); music.out.gain.linearRampToValueAtTime(0,AC.currentTime+.6);}catch(e){} }
+// ---- background music: the track Monem picked, looped ----
+const bgm=new Audio('media/music.m4a'); bgm.loop=true; bgm.preload='auto'; bgm.volume=.45;
+const music={get on(){ return !bgm.paused; }};
+function startMusic(){ if(!soundOn) return; const p=bgm.play(); if(p&&p.catch) p.catch(()=>{}); }
+function stopMusic(){ bgm.pause(); }
 document.addEventListener('pointerdown',startMusic,{once:true});
-document.addEventListener('visibilitychange',()=>{ if(!AC) return; if(document.hidden) AC.suspend(); else if(soundOn) AC.resume(); });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ bgm.pause(); AC&&AC.suspend(); } else if(soundOn){ startMusic(); AC&&AC.resume(); } });
 $('#snd').onclick=()=>{soundOn=!soundOn; soundOn?startMusic():stopMusic();$('#snd').textContent=soundOn?'♪':'×';$('#snd').setAttribute('aria-label',soundOn?'Sound on':'Sound off');};
 
 // ---- confetti ----
