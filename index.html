@@ -230,7 +230,7 @@ p{margin:0} .muted{color:var(--muted)}
   <!-- 3 likely -->
   <section class="scene card" data-title="Who's more likely" data-max="1">
     <span class="eyebrow">Game 3 · Who's more likely to…</span>
-    <h2 style="font-size:20px" class="muted" id="lkCount">1 of 8</h2>
+    <h2 style="font-size:20px" class="muted" id="lkCount">8 new questions</h2>
     <div class="q" id="lkQ"></div>
     <div class="pick" id="lkPick">
       <button class="btn her n-her" data-w="her"></button>
@@ -238,7 +238,8 @@ p{margin:0} .muted{color:var(--muted)}
     </div>
     <div id="lkEnd" hidden style="display:flex;flex-direction:column;gap:12px">
       <ul class="ans" id="lkList"></ul>
-      <p class="tip">Screenshot your answers and send them to <span class="n-other"></span>. Count how many you both picked the same.</p>
+      <p class="tip">You and <span class="n-other"></span> each get different questions. Screenshot yours and send them over, then answer each other's on your next call.</p>
+      <div class="row"><button class="btn alt" id="lkMore">8 new questions</button></div>
     </div>
   </section>
 
@@ -267,7 +268,7 @@ p{margin:0} .muted{color:var(--muted)}
     <span class="eyebrow">Game 6 · Scratch card</span>
     <h2>Scratch to reveal</h2>
     <div class="scr"><div class="under" id="scrMsg"></div><canvas id="scr"></canvas></div>
-    <span class="status" id="scrStat">Use your finger to scratch the gold.</span>
+    <div class="row" style="justify-content:space-between"><span class="status" id="scrStat">Use your finger to scratch the gold.</span><button class="btn alt" id="scrMore" hidden>Scratch a new one</button></div>
   </section>
 
   <!-- 7 wheel -->
@@ -319,10 +320,10 @@ const CONFIG = {
   weddingLine: "",
   photo: "media/puzzle.jpg",
   album: ["media/w1.jpg","media/w2.jpg","media/w3.jpg","media/w4.jpg","media/w5.jpg"],
-  scratch: "Distance means so little when someone means so much. Thank you for always being there for each other.",
   note: "We made this little game box for the two of you. You're in two countries right now, but tonight you're playing the same games. We hope it makes you laugh, argue over the answers, and plan your next date. Love you both."
 };
-const LIKELY = ["call first after a fight","fall asleep on a video call","forget the time difference","eat the last slice","cry at a sad movie","plan the next visit","say sorry first","send the most voice notes"];
+const LIKELY = ["call first after a fight", "fall asleep on a video call", "forget the time difference", "send the most voice notes", "plan the next visit", "say sorry first", "cry at the airport", "count the days until the next visit", "text good morning while the other is going to bed", "stay up way too late just to keep talking", "send a random selfie for no reason", "overpack for a visit", "order food to the other’s door from far away", "press play late on a movie-together night", "get jealous first", "eat the last slice", "cry at a sad movie", "win an argument", "forget an important date", "remember every tiny detail", "send a song that reminds them of the other", "leave the other on seen", "reply with only an emoji", "sing on a video call", "wake up early just for a call", "screenshot the other’s funny face", "mail a surprise gift", "get lost at the airport", "steal the blanket when together", "cook the other’s favourite dish", "laugh at their own jokes", "take forever to decide what to eat", "plan a surprise", "talk in a baby voice", "send a long paragraph text", "forget to charge the phone before a call", "have the worse internet connection", "cheer the other up after a bad day", "watch the next episode without the other", "spoil a show’s ending", "dance in the kitchen", "fall asleep with the call still on", "save every cute chat as a screenshot", "keep checking if the other is online", "get hungry in the middle of a video call", "change the profile picture to a couple photo", "cry first when saying goodbye", "know the other’s tea or coffee order by heart", "send a miss-you message at 3 a.m.", "buy matching things", "be late for a call", "eat on camera during a call", "say I love you first on a call", "keep a countdown to the next meeting", "get way too excited about a delivery", "fall asleep mid-sentence", "plan your dream home", "rewatch old photos at midnight", "send a voice note longer than five minutes", "start a call just to say nothing at all"];
+const SCRATCH = ["The miles are just a number. You two are the real thing.", "Somewhere between Dhaka and Virginia there is a heart that belongs to both of you.", "Every goodnight there is a good morning here. You two never really say goodbye.", "Two time zones, one team.", "The waiting is hard. The hug at the airport will be worth all of it.", "Every call counts. Every message matters. Keep going.", "Some couples share a sofa. You two share the same sky.", "The same moon is watching over both of you tonight.", "You're not apart. You're just between visits.", "One day this distance will be a story you tell, not the life you live.", "Patience now, forever later.", "Far away, but never far apart.", "Love doesn't check the time zone.", "Missing each other just means it's real.", "Count the days down, not the miles.", "Every good morning text is a little hug across the ocean.", "Strong couples still miss each other. They just never give up.", "The ocean is wide. Your love is wider.", "Today's video call is tomorrow's sweet memory.", "Same playlist, two cities, one heart.", "Hold on. The next hello is closer than it was yesterday.", "Long distance is temporary. You two are permanent.", "Your love story has more airport scenes than a movie.", "Wherever you two are, home is the other one.", "Proof that love travels faster than planes.", "You're each other's favourite notification.", "One heart in Dhaka, one in Virginia, the same beat.", "Every mile between you is a mile you'll close one day.", "You two make missing someone look beautiful.", "Your next hug is already on its way.", "Being apart only shows how much you belong together.", "Tonight's challenge: tell each other one thing you're grateful for.", "Tonight's challenge: share your favourite memory together.", "Tonight's challenge: plan one tiny thing to do on your next call.", "Tonight's challenge: send each other a photo of your view right now.", "Tonight's challenge: pick the first meal you'll eat together next visit.", "Tonight's challenge: say three things you love about each other.", "Tonight's challenge: listen to the same song at the same time.", "The distance is real. So is everything you two have built.", "Good things take time. The best things are worth the wait."];
 const DATES = ["Video call dinner","Same movie night","Plan the next visit","Order food for each other","Online game night","Shared playlist","Write a letter","Morning–night call"];
 const SYM = ['✈️','📞','💌','🌙','☀️','💞'];
 
@@ -330,9 +331,13 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const setT=(sel,t)=>$$(sel).forEach(e=>e.textContent=t);
 setT('.n-her',CONFIG.her); setT('.n-him',CONFIG.him); setT('.n-from',CONFIG.from);
 setT('.pl-her',CONFIG.herPlace); setT('.pl-him',CONFIG.himPlace);
-$('#scrMsg').textContent=CONFIG.scratch; $('#note').textContent=CONFIG.note; $('#lockHint').textContent=CONFIG.lockHint;
+$('#note').textContent=CONFIG.note; $('#lockHint').textContent=CONFIG.lockHint;
 $('#wedLine').textContent=CONFIG.weddingLine; $('#wedLine').hidden=!CONFIG.weddingLine;
 let ME='her';
+function fresh(key,pool,n){ key='seen_'+key+'_'+ME; let seen=[]; try{seen=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){}
+  let av=pool.map((_,i)=>i).filter(i=>!seen.includes(i)); if(av.length<n){ seen=[]; av=pool.map((_,i)=>i); }
+  for(let i=av.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[av[i],av[j]]=[av[j],av[i]];}
+  const pick=av.slice(0,n); try{localStorage.setItem(key,JSON.stringify(seen.concat(pick)));}catch(e){} return pick.map(i=>pool[i]); }
 function setPlayer(p){ ME=p; const o=p==='her'?'him':'her';
   setT('.n-me',CONFIG[p]); setT('.n-other',CONFIG[o]); setT('.pl-other',CONFIG[o+'Place']); }
 setPlayer('her');
@@ -407,7 +412,7 @@ function codeRender(){ $('#code').innerHTML=[...CONFIG.lock].map((_,i)=>`<i clas
       else { $('#code').classList.add('bad'); beep(160,.25,'sawtooth',.05); setTimeout(()=>{$('#code').classList.remove('bad');typed='';codeRender();},450); } } };
   $('#pad').appendChild(b); });
 codeRender();
-$$('#stWho .btn').forEach(b=>b.onclick=()=>{ setPlayer(b.dataset.p); $('#stWho').hidden=true; $('#stBox').hidden=false; beep(700,.08); tickClocks(); });
+$$('#stWho .btn').forEach(b=>b.onclick=()=>{ setPlayer(b.dataset.p); lkNew(); $('#stWho').hidden=true; $('#stBox').hidden=false; beep(700,.08); tickClocks(); });
 function clock(tz){ const d=new Date(); const t=d.toLocaleTimeString('en-US',{timeZone:tz,hour:'numeric',minute:'2-digit'});
   const h=+d.toLocaleString('en-US',{timeZone:tz,hour:'numeric',hour12:false}); return [t,h>=6&&h<18?'☀️ daytime':'🌙 night']; }
 function tickClocks(){ try{ const a=clock(CONFIG.herTz),b=clock(CONFIG.himTz);
@@ -458,14 +463,15 @@ function memFlip(b){ if(memLock||b.classList.contains('up')||b.classList.contain
 memInit();
 
 // ---- 3 likely (solo, compare later) ----
-let lk=0; const lkA=[];
-function lkShow(){ $('#lkCount').textContent=`${lk+1} of ${LIKELY.length}`; $('#lkQ').textContent='Who is more likely to '+LIKELY[lk]+'?'; }
+let lk=0, lkA=[], lkQs=[];
+function lkNew(){ lkQs=fresh('q',LIKELY,8); lk=0; lkA=[]; $('#lkPick').hidden=false; $('#lkQ').hidden=false; $('#lkEnd').hidden=true; lkShow(); }
+function lkShow(){ $('#lkCount').textContent=`${lk+1} of ${lkQs.length}`; $('#lkQ').textContent='Who is more likely to '+lkQs[lk]+'?'; }
 $$('#lkPick .btn').forEach(b=>b.onclick=()=>{ lkA.push(CONFIG[b.dataset.w]); beep(b.dataset.w==='her'?700:500,.08); lk++;
-  if(lk<LIKELY.length) return lkShow();
+  if(lk<lkQs.length) return lkShow();
   $('#lkPick').hidden=true; $('#lkCount').textContent='Your answers'; $('#lkQ').hidden=true;
-  $('#lkList').innerHTML=LIKELY.map((q,i)=>`<li><span>${q.charAt(0).toUpperCase()+q.slice(1)}</span><b>${lkA[i]}</b></li>`).join('');
+  $('#lkList').innerHTML=lkQs.map((q,i)=>`<li><span>${q.charAt(0).toUpperCase()+q.slice(1)}</span><b>${lkA[i]}</b></li>`).join('');
   $('#lkEnd').hidden=false; win(); award(3,1); });
-lkShow();
+$('#lkMore').onclick=()=>{ lkNew(); beep(600,.08); };
 
 // ---- 4 catcher ----
 let hcTimer=0,hcSpawn=0,hcScore=0,hcLeft=20,hcRun=false;
@@ -513,7 +519,7 @@ $('#tAgain').onclick=tInit; tInit();
 
 // ---- 6 scratch ----
 let scrReady=false;
-function initScratch(){ if(scrReady) return; scrReady=true; const c=$('#scr'),r=c.getBoundingClientRect(),dpr=devicePixelRatio||1;
+function initScratch(){ if(scrReady) return; scrReady=true; $('#scrMsg').textContent=fresh('s',SCRATCH,1)[0]; const c=$('#scr'); c.hidden=false; c.style.opacity=1; $('#scrMore').hidden=true; $('#scrStat').textContent='Use your finger to scratch the gold.'; const _c=c,r=c.getBoundingClientRect(),dpr=devicePixelRatio||1;
   c.width=r.width*dpr;c.height=r.height*dpr; const g=c.getContext('2d'); g.scale(dpr,dpr);
   const gr=g.createLinearGradient(0,0,r.width,r.height);gr.addColorStop(0,'#E8A21F');gr.addColorStop(.5,'#F7D27A');gr.addColorStop(1,'#E8A21F');
   g.fillStyle=gr;g.fillRect(0,0,r.width,r.height); g.fillStyle='rgba(18,51,46,.75)';g.font='600 22px Fredoka, sans-serif';g.textAlign='center';
@@ -522,9 +528,11 @@ function initScratch(){ if(scrReady) return; scrReady=true; const c=$('#scr'),r=
   const pt=e=>{const b=c.getBoundingClientRect();return{x:e.clientX-b.left,y:e.clientY-b.top};};
   const draw=p=>{g.lineWidth=36;g.lineCap='round';g.beginPath();g.moveTo((last||p).x,(last||p).y);g.lineTo(p.x,p.y);g.stroke();last=p;
     if(++n%12===0&&!gone){ const d=g.getImageData(0,0,c.width,c.height).data;let clr=0;for(let i=3;i<d.length;i+=64)if(d[i]===0)clr++;
-      if(clr/(d.length/64)>.5){gone=true;c.style.opacity=0;setTimeout(()=>c.hidden=true,500);win();award(6,1);$('#scrStat').innerHTML='<span class="earned">Revealed · +1★</span>';}}};
+      if(clr/(d.length/64)>.5){gone=true;c.style.opacity=0;setTimeout(()=>c.hidden=true,500);win();award(6,1);$('#scrStat').innerHTML='<span class="earned">Revealed · +1★</span>';$('#scrMore').hidden=false;}}};
   c.onpointerdown=e=>{down=true;last=null;c.setPointerCapture(e.pointerId);draw(pt(e));};
   c.onpointermove=e=>{if(down)draw(pt(e));}; c.onpointerup=c.onpointercancel=()=>{down=false;}; }
+
+$('#scrMore').onclick=()=>{ scrReady=false; initScratch(); beep(600,.08); };
 
 // ---- 7 wheel ----
 let wAng=0,spinning=false;
