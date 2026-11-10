@@ -353,7 +353,7 @@ function beep(f=660,d=.09,type="triangle",v=.08){ if(!soundOn) return; try{
   o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime+d);}catch(e){} }
 const win=()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.15),i*110)); confetti();};
 // ---- background music: the track Monem picked, looped ----
-const bgm=new Audio('media/music.m4a'); bgm.loop=true; bgm.preload='auto'; bgm.volume=.45;
+const bgm=new Audio('media/music.mp3'); bgm.loop=true; bgm.preload='auto'; bgm.volume=.45;
 const music={get on(){ return !bgm.paused; }};
 function startMusic(){ if(!soundOn) return; const p=bgm.play(); if(p&&p.catch) p.catch(()=>{}); }
 function stopMusic(){ bgm.pause(); }
