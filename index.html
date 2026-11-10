@@ -352,27 +352,45 @@ function beep(f=660,d=.09,type="triangle",v=.08){ if(!soundOn) return; try{
   g.gain.setValueAtTime(v,AC.currentTime); g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);
   o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime+d);}catch(e){} }
 const win=()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.15),i*110)); confetti();};
-// ---- background music (original, generated live) ----
+// ---- background music: slow piano with a violin line (original, generated live) ----
 const music={on:false,timer:0,next:0,step:0,out:null};
-const N={G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,G5:783.99,A5:880};
-const CH=[[261.63,329.63,392],[220,261.63,329.63],[174.61,220,261.63],[196,246.94,293.66]];
-const MEL=['E5',0,'G5',0,'A5','G5',0,0,'E5',0,'C5',0,'D5',0,0,0,'C5',0,'A4',0,'C5','D5','E5',0,'D5',0,'B4',0,'G4',0,0,0];
-const EIGHTH=60/84/2;
-function tone(f,t,d,type,v){ const o=AC.createOscillator(),g=AC.createGain(); o.type=type; o.frequency.value=f;
-  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+Math.min(.08,d/3)); g.gain.exponentialRampToValueAtTime(.0001,t+d);
-  o.connect(g).connect(music.out); o.start(t); o.stop(t+d+.05); }
-function sched(){ while(music.next<AC.currentTime+.4){ const s=music.step, t=music.next, ch=CH[Math.floor(s/8)%4];
-    if(s%8===0){ ch.forEach(f=>tone(f,t,EIGHTH*8.2,'sine',.18)); tone(ch[0]/2,t,EIGHTH*8,'triangle',.25); }
-    tone(ch[[0,1,2,1][s%4]]*2,t,EIGHTH*1.6,'triangle',.07);
-    const m=MEL[s%32]; if(m) tone(N[m],t,EIGHTH*2.6,'sine',.22);
-    music.step++; music.next+=EIGHTH; } }
+const BEAT=60/62, E8=BEAT/2;
+// 8-bar progression in A minor: Am F C G | Am F Dm E   [bass, then 4 right-hand notes]
+const PROG=[[110,[220,329.63,440,523.25]],[87.31,[174.61,261.63,349.23,440]],[130.81,[130.81*2,392,523.25,659.25].map((f,i)=>i?f:261.63)],[98,[196,293.66,392,493.88]],
+            [110,[220,329.63,440,523.25]],[87.31,[174.61,261.63,349.23,440]],[73.42,[146.83,220,293.66,349.23]],[82.41,[164.81,246.94,329.63,415.30]]];
+const ARP=[0,1,2,3,2,1,2,1];
+// violin line: [frequency, length in eighths], 64 eighths = 8 bars
+const VIOL=[[659.25,6],[587.33,2],[523.25,4],[440,4],[392,6],[659.25,2],[587.33,8],
+            [659.25,4],[880,4],[783.99,4],[698.46,2],[659.25,2],[698.46,4],[587.33,4],[493.88,6],[415.30,2]];
+const VSTART={}; { let k=0; VIOL.forEach(v=>{ VSTART[k]=v; k+=v[1]; }); }
+function piano(f,t,v,d){ const g=AC.createGain(), lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=Math.min(5000,f*6);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+.006); g.gain.exponentialRampToValueAtTime(v*.35,t+.35); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  g.connect(lp).connect(music.out);
+  [[1,1],[2,.42],[3,.18],[4,.08],[5,.04]].forEach(([h,a])=>{ const o=AC.createOscillator(), og=AC.createGain(); o.frequency.value=f*h*(1+(h-1)*.0007); og.gain.value=a;
+    o.connect(og).connect(g); o.start(t); o.stop(t+d+.05); }); }
+function violin(f,t,d){ const g=AC.createGain(), lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2600; lp.Q.value=.7;
+  const lfo=AC.createOscillator(), lg=AC.createGain(); lfo.frequency.value=5.2; lg.gain.setValueAtTime(0,t); lg.gain.linearRampToValueAtTime(f*.006,t+Math.min(.8,d*.5));
+  lfo.connect(lg); const att=Math.min(.45,d*.35), rel=.6;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.16,t+att); g.gain.setValueAtTime(.16,t+d-.05); g.gain.linearRampToValueAtTime(.12,t+d); g.gain.exponentialRampToValueAtTime(.0001,t+d+rel);
+  [-4,4,0].forEach((c,i)=>{ const o=AC.createOscillator(); o.type=i<2?'sawtooth':'triangle'; o.frequency.value=f; o.detune.value=c; lg.connect(o.frequency);
+    const og=AC.createGain(); og.gain.value=i<2?.5:.6; o.connect(og).connect(g); o.start(t); o.stop(t+d+rel+.1); });
+  lfo.start(t); lfo.stop(t+d+rel+.1); g.connect(lp).connect(music.out); }
+function reverb(){ const len=AC.sampleRate*3, b=AC.createBuffer(2,len,AC.sampleRate);
+  for(let ch=0;ch<2;ch++){ const d=b.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3.2); }
+  const c=AC.createConvolver(); c.buffer=b; return c; }
+function sched(){ while(music.next<AC.currentTime+.6){ const s=music.step, t=music.next, bar=Math.floor(s/8)%16, [bass,rh]=PROG[bar%8];
+    if(s%8===0){ piano(bass,t,.34,E8*9); piano(bass*2,t,.14,E8*8); }
+    piano(rh[ARP[s%8]],t,s%8===0?.2:.13+Math.random()*.03,E8*5);
+    if(bar>=8){ const v=VSTART[s%64]; if(v) violin(v[0],t,v[1]*E8); }   // violin joins on the second pass
+    music.step++; music.next+=E8; } }
 function startMusic(){ if(!soundOn) return; try{
   AC=AC||new (window.AudioContext||window.webkitAudioContext)(); AC.resume&&AC.resume();
-  if(!music.out){ music.out=AC.createGain(); music.out.gain.value=0; music.out.connect(AC.destination); }
-  music.out.gain.cancelScheduledValues(AC.currentTime); music.out.gain.linearRampToValueAtTime(.35,AC.currentTime+1.5);
-  if(music.on) return; music.on=true; music.next=AC.currentTime+.1; music.timer=setInterval(sched,100); sched(); }catch(e){} }
+  if(!music.out){ music.out=AC.createGain(); music.out.gain.value=0; const dry=AC.createGain(), wet=AC.createGain(), rv=reverb();
+    dry.gain.value=.75; wet.gain.value=.5; music.out.connect(dry).connect(AC.destination); music.out.connect(rv).connect(wet).connect(AC.destination); }
+  music.out.gain.cancelScheduledValues(AC.currentTime); music.out.gain.linearRampToValueAtTime(.55,AC.currentTime+2);
+  if(music.on) return; music.on=true; music.next=AC.currentTime+.15; music.timer=setInterval(sched,120); sched(); }catch(e){} }
 function stopMusic(){ if(!music.on) return; music.on=false; clearInterval(music.timer);
-  try{ music.out.gain.cancelScheduledValues(AC.currentTime); music.out.gain.linearRampToValueAtTime(0,AC.currentTime+.4);}catch(e){} }
+  try{ music.out.gain.cancelScheduledValues(AC.currentTime); music.out.gain.linearRampToValueAtTime(0,AC.currentTime+.6);}catch(e){} }
 document.addEventListener('pointerdown',startMusic,{once:true});
 document.addEventListener('visibilitychange',()=>{ if(!AC) return; if(document.hidden) AC.suspend(); else if(soundOn) AC.resume(); });
 $('#snd').onclick=()=>{soundOn=!soundOn; soundOn?startMusic():stopMusic();$('#snd').textContent=soundOn?'♪':'×';$('#snd').setAttribute('aria-label',soundOn?'Sound on':'Sound off');};
@@ -466,11 +484,17 @@ memInit();
 
 // ---- 3 likely (solo, compare later) ----
 const ROUNDS=LIKELY.length/8; let lk=0, lkA=[], lkQs=[], lkRound=0;
-function getRound(){ try{ return (+localStorage.getItem('round_'+ME)||0)%ROUNDS; }catch(e){ return 0; } }
-function saveRound(n){ try{ localStorage.setItem('round_'+ME,((n%ROUNDS)+ROUNDS)%ROUNDS); }catch(e){} }
-function lkNew(){ lkRound=getRound(); lkQs=LIKELY.slice(lkRound*8,lkRound*8+8); lk=0; lkA=[];
+function getRound(){ try{ return Math.max(0,+localStorage.getItem('round_'+ME)||0); }catch(e){ return 0; } }
+function saveRound(n){ try{ localStorage.setItem('round_'+ME,Math.max(0,n)); }catch(e){} }
+// Rounds 1-8 use the list in order. From round 9 on, every block of 8 rounds reshuffles all 64
+// with a fixed seed, so both phones always get the same questions for the same round number.
+function roundQs(r){ const cyc=Math.floor(r/ROUNDS), i=r%ROUNDS, order=LIKELY.map((_,k)=>k);
+  if(cyc>0){ let a=(cyc*2654435761)>>>0; const rnd=()=>{ a=(a+0x6D2B79F5)|0; let t=Math.imul(a^(a>>>15),1|a); t=(t+Math.imul(t^(t>>>7),61|t))^t; return ((t^(t>>>14))>>>0)/4294967296; };
+    for(let k=order.length-1;k>0;k--){ const j=Math.floor(rnd()*(k+1)); [order[k],order[j]]=[order[j],order[k]]; } }
+  return order.slice(i*8,i*8+8).map(k=>LIKELY[k]); }
+function lkNew(){ lkRound=getRound(); lkQs=roundQs(lkRound); lk=0; lkA=[];
   $('#lkPick').hidden=false; $('#lkQ').hidden=false; $('#lkEnd').hidden=true; $('#lkNav').hidden=false; lkShow(); }
-function lkShow(){ $('#lkCount').textContent=`Round ${lkRound+1} of ${ROUNDS} · ${lk+1}/8`; $('#lkQ').textContent='Who is more likely to '+lkQs[lk]+'?'; }
+function lkShow(){ $('#lkCount').textContent=`Round ${lkRound+1} · ${lk+1}/8`; $('#lkQ').textContent='Who is more likely to '+lkQs[lk]+'?'; }
 $('#rPrev').onclick=()=>{ saveRound(lkRound-1); lkNew(); beep(500,.05); };
 $('#rNext').onclick=()=>{ saveRound(lkRound+1); lkNew(); beep(500,.05); };
 $$('#lkPick .btn').forEach(b=>b.onclick=()=>{ lkA.push(CONFIG[b.dataset.w]); beep(b.dataset.w==='her'?700:500,.08); lk++; $('#lkNav').hidden=true;
