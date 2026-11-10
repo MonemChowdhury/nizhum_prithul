@@ -203,7 +203,7 @@ p{margin:0} .muted{color:var(--muted)}
         <div class="base"></div><div class="rib"></div><div class="lid"></div><div class="bow">🎀</div>
       </button>
       <p class="muted" style="text-align:center">From <span class="n-from"></span></p>
-      <p class="muted" style="text-align:center;font-size:13px">On iPhone, switch off silent mode to hear the sounds.</p>
+      <p class="muted" style="text-align:center;font-size:13px">On iPhone, switch off silent mode to hear the music.</p>
     </div>
   </section>
 
@@ -294,7 +294,7 @@ p{margin:0} .muted{color:var(--muted)}
     <div class="row"><span class="big"><span id="finN">0</span>★</span><span class="muted" id="finOf"></span></div>
     <p class="tip">Screenshot this and send it to <span class="n-other"></span> in <span class="pl-other"></span>. Whoever has more stars picks the next date.</p>
     <div class="letter">
-      <p>Dear <span class="n-her"></span> &amp; <span class="n-him"></span>,</p>
+      <p>Dear Apu &amp; Bhaia,</p>
       <p id="note"></p>
       <p class="sig">— <span class="n-from"></span></p>
     </div>
@@ -345,7 +345,30 @@ function beep(f=660,d=.09,type="triangle",v=.08){ if(!soundOn) return; try{
   g.gain.setValueAtTime(v,AC.currentTime); g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+d);
   o.connect(g).connect(AC.destination); o.start(); o.stop(AC.currentTime+d);}catch(e){} }
 const win=()=>{[523,659,784,1047].forEach((f,i)=>setTimeout(()=>beep(f,.15),i*110)); confetti();};
-$('#snd').onclick=()=>{soundOn=!soundOn;$('#snd').textContent=soundOn?'♪':'×';$('#snd').setAttribute('aria-label',soundOn?'Sound on':'Sound off');};
+// ---- background music (original, generated live) ----
+const music={on:false,timer:0,next:0,step:0,out:null};
+const N={G4:392,A4:440,B4:493.88,C5:523.25,D5:587.33,E5:659.25,G5:783.99,A5:880};
+const CH=[[261.63,329.63,392],[220,261.63,329.63],[174.61,220,261.63],[196,246.94,293.66]];
+const MEL=['E5',0,'G5',0,'A5','G5',0,0,'E5',0,'C5',0,'D5',0,0,0,'C5',0,'A4',0,'C5','D5','E5',0,'D5',0,'B4',0,'G4',0,0,0];
+const EIGHTH=60/84/2;
+function tone(f,t,d,type,v){ const o=AC.createOscillator(),g=AC.createGain(); o.type=type; o.frequency.value=f;
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v,t+Math.min(.08,d/3)); g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g).connect(music.out); o.start(t); o.stop(t+d+.05); }
+function sched(){ while(music.next<AC.currentTime+.4){ const s=music.step, t=music.next, ch=CH[Math.floor(s/8)%4];
+    if(s%8===0){ ch.forEach(f=>tone(f,t,EIGHTH*8.2,'sine',.18)); tone(ch[0]/2,t,EIGHTH*8,'triangle',.25); }
+    tone(ch[[0,1,2,1][s%4]]*2,t,EIGHTH*1.6,'triangle',.07);
+    const m=MEL[s%32]; if(m) tone(N[m],t,EIGHTH*2.6,'sine',.22);
+    music.step++; music.next+=EIGHTH; } }
+function startMusic(){ if(!soundOn) return; try{
+  AC=AC||new (window.AudioContext||window.webkitAudioContext)(); AC.resume&&AC.resume();
+  if(!music.out){ music.out=AC.createGain(); music.out.gain.value=0; music.out.connect(AC.destination); }
+  music.out.gain.cancelScheduledValues(AC.currentTime); music.out.gain.linearRampToValueAtTime(.35,AC.currentTime+1.5);
+  if(music.on) return; music.on=true; music.next=AC.currentTime+.1; music.timer=setInterval(sched,100); sched(); }catch(e){} }
+function stopMusic(){ if(!music.on) return; music.on=false; clearInterval(music.timer);
+  try{ music.out.gain.cancelScheduledValues(AC.currentTime); music.out.gain.linearRampToValueAtTime(0,AC.currentTime+.4);}catch(e){} }
+document.addEventListener('pointerdown',startMusic,{once:true});
+document.addEventListener('visibilitychange',()=>{ if(!AC) return; if(document.hidden) AC.suspend(); else if(soundOn) AC.resume(); });
+$('#snd').onclick=()=>{soundOn=!soundOn; soundOn?startMusic():stopMusic();$('#snd').textContent=soundOn?'♪':'×';$('#snd').setAttribute('aria-label',soundOn?'Sound on':'Sound off');};
 
 // ---- confetti ----
 const fx=$('#fx'),cx=fx.getContext('2d'); let parts=[],raf=0;
